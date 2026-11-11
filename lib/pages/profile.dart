@@ -2,6 +2,7 @@ import 'package:fe/pages/detailProduk.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fe/services/api.dart';
+import 'package:fe/pages/editprofile.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -328,7 +329,20 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                   OutlinedButton(
-                                    onPressed: () {},
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => EditProfilePage(
+                                            profile: profile,
+                                          ),
+                                        ),
+                                      );
+
+                                      if (result == true) {
+                                        await loadProfile();
+                                      }
+                                    },
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: textDark,
                                       side: const BorderSide(

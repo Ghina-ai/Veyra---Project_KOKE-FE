@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -88,6 +87,19 @@ class ApiServices {
     Map<String, dynamic> data,
   ) async {
     final response = await http.post(
+      Uri.parse("$_baseUrl$endpoint"),
+      headers: await _headers(),
+      body: jsonEncode(data),
+    );
+
+    return _handleResponse(response);
+  }
+
+  static Future<dynamic> patch(
+    String endpoint,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.patch(
       Uri.parse("$_baseUrl$endpoint"),
       headers: await _headers(),
       body: jsonEncode(data),
