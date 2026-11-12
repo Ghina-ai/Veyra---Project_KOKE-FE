@@ -304,15 +304,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             // PROFILE IMAGE
                             Transform.translate(
                               offset: const Offset(0, -60),
-                              child: const CircleAvatar(
+                              child: CircleAvatar(
                                 radius: 74,
                                 backgroundColor: Colors.white,
-                                backgroundImage: AssetImage(
-                                  'assets/humster.jpg',
-                                ),
+                                backgroundImage: profile['image'] != null &&
+                                        profile['image'].toString().isNotEmpty
+                                    ? NetworkImage(profile['image'].toString())
+                                    : const AssetImage('assets/humster.jpg') as ImageProvider,
                               ),
                             ),
-
                             // USERNAME + EDIT PROFILE
                             Transform.translate(
                               offset: const Offset(0, -40),
