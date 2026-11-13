@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fe/services/api.dart';
 import 'package:fe/pages/detailProduk.dart';
 import 'package:fe/pages/keranjang.dart';
+import 'package:fe/pages/like.dart';
+import 'package:fe/pages/keranjang.dart';
 
 class CategoryPage extends StatefulWidget {
   final String category;
@@ -14,6 +16,7 @@ class CategoryPage extends StatefulWidget {
 }
 
 class _CategoryPageState extends State<CategoryPage> {
+  Set<int> favoriteIds = {};
   int? currentUserId;
   late Future<List<Map<String, dynamic>>> productsFuture;
 
@@ -27,6 +30,43 @@ class _CategoryPageState extends State<CategoryPage> {
     super.initState();
     productsFuture = fetchProducts();
     getCurrentUser();
+    fetchFavoriteIds();
+
+  }
+
+  Future<List<Map<String, dynamic>>> fetchProducts() async {
+    final response = await ApiServices.get('/posts');
+
+    if (response['success'] == true) {
+      final data = response['data'];
+      final posts = data['posts'] as List;
+
+      return posts
+          .map((item) => Map<String, dynamic>.from(item))
+          .where((product) {
+            return product['kategori']
+                    ?.toString()
+                    .toLowerCase() ==
+                widget.category.toLowerCase();
+          })
+          .toList();
+    }
+
+    throw Exception('Gagal mengambil produk');
+  }
+
+  void openProductDetail(Map<String, dynamic> product) {
+    if (currentUserId == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetailProdukPage(
+          product: product,
+          currentUserId: currentUserId!,
+        ),
+      ),
+    );
   }
 
   Future<void> getCurrentUser() async {
@@ -43,68 +83,54 @@ class _CategoryPageState extends State<CategoryPage> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchProducts() async {
-    final response = await ApiServices.get('/posts');
+  Future<void> fetchFavoriteIds() async {
+    try {
+      final response = await ApiServices.get('/favorites');
 
-    if (response is Map && response['success'] == true) {
-      final data = response['data'];
+      if (response['success'] == true) {
+        final items = response['data']['favorites'] as List;
 
-      if (data is Map && data['posts'] is List) {
-        final products = List<Map<String, dynamic>>.from(
-          (data['posts'] as List).map(
-            (item) => Map<String, dynamic>.from(item as Map),
-          ),
-        );
+        if (!mounted) return;
 
-        return products.where((product) {
-          final category = (product['kategori'] ?? '').toString().toLowerCase();
-
-          return category == widget.category.toLowerCase();
-        }).toList();
+        setState(() {
+          favoriteIds = items.map<int>((item) {
+            return int.parse(item['id'].toString());
+          }).toSet();
+        });
       }
+    } catch (e) {
+      debugPrint('Gagal mengambil favorite: $e');
     }
-
-    throw Exception('Gagal mengambil data produk');
   }
 
-  String formatRupiah(dynamic value) {
-    final number = double.tryParse(value.toString()) ?? 0;
-    final formatted = number.toStringAsFixed(0);
+  Future<void> toggleFavorite(int productId) async {
+    final isFavorite = favoriteIds.contains(productId);
 
-    return 'Rp ${formatted.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => '.')}';
-  }
+    try {
+      if (isFavorite) {
+        await ApiServices.delete('/favorites/$productId');
+      } else {
+        await ApiServices.post('/favorites/$productId', {});
+      }
 
-  void openProductDetail(Map<String, dynamic> product) {
-    if (currentUserId == null) {
+      if (!mounted) return;
+
+      setState(() {
+        if (isFavorite) {
+          favoriteIds.remove(productId);
+        } else {
+          favoriteIds.add(productId);
+        }
+      });
+
+      favoriteChanged.value++;
+    } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data akun belum tersedia.')),
+        SnackBar(content: Text('Gagal mengubah Favorite: $e')),
       );
-      return;
     }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DetailProdukPage(
-          product: product,
-          currentUserId: currentUserId!,
-          onEdit: () async {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Fitur edit produk belum disambungkan.'),
-              ),
-            );
-          },
-          onDelete: () async {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Fitur hapus produk belum disambungkan.'),
-              ),
-            );
-          },
-        ),
-      ),
-    );
   }
 
   void addToCart(Map<String, dynamic> product) {
@@ -120,7 +146,17 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  // PRODUCT CARD - SAMA SEPERTI HOMEPAGE
+  String formatRupiah(dynamic value) {
+    final number = double.tryParse(value.toString()) ?? 0;
+    final formatted = number.toStringAsFixed(0);
+
+    return 'Rp ${formatted.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '.',
+    )}';
+  }
+
+   // PRODUCT CARD
   Widget productCard(Map<String, dynamic> product) {
     final image = product['gambar']?.toString();
     final name = product['nama']?.toString() ?? 'Produk';
@@ -129,9 +165,14 @@ class _CategoryPageState extends State<CategoryPage> {
 
     final hasImage = image != null && image.trim().isNotEmpty;
 
+    final productId = int.tryParse(product['id'].toString());
+
+    final isFavorite = productId != null && favoriteIds.contains(productId);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // PRODUCT IMAGE
         AspectRatio(
           aspectRatio: 1,
           child: Stack(
@@ -167,12 +208,37 @@ class _CategoryPageState extends State<CategoryPage> {
                   ),
                 ),
               ),
+
+              // FAVORITE BUTTON
+              Positioned(
+                top: 9,
+                right: 9,
+                child: Material(
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      if (productId != null) {
+                        toggleFavorite(productId);
+                      }
+                    },
+                      child: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite
+                            ? Colors.red
+                            : const Color(0xFF888888),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
 
         const SizedBox(height: 8),
 
+        // CATEGORY
         GestureDetector(
           onTap: () => openProductDetail(product),
           child: Text(
@@ -188,6 +254,7 @@ class _CategoryPageState extends State<CategoryPage> {
 
         const SizedBox(height: 4),
 
+        // RATING
         Row(
           children: [
             const Icon(Icons.star_rounded, color: Color(0xFFE8B94F), size: 14),
@@ -213,6 +280,7 @@ class _CategoryPageState extends State<CategoryPage> {
 
         const SizedBox(height: 5),
 
+        // PRODUCT NAME
         GestureDetector(
           onTap: () => openProductDetail(product),
           child: Text(
@@ -229,6 +297,7 @@ class _CategoryPageState extends State<CategoryPage> {
 
         const SizedBox(height: 5),
 
+        // PRICE + CART
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -243,10 +312,7 @@ class _CategoryPageState extends State<CategoryPage> {
               ),
             ),
             Material(
-              color: const Color(0xFFFFEEE9),
-              borderRadius: BorderRadius.circular(9),
               child: InkWell(
-                borderRadius: BorderRadius.circular(9),
                 onTap: () => addToCart(product),
                 child: const SizedBox(
                   width: 34,

@@ -2,8 +2,6 @@ import 'package:fe/pages/categorry.dart';
 import 'package:fe/pages/detailProduk.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:iconify_flutter/iconify_flutter.dart';
-import 'package:iconify_flutter/icons/ant_design.dart';
 import 'package:fe/pages/editProduct.dart';
 
 import 'package:fe/services/api.dart';
@@ -391,9 +389,6 @@ class _HomePageState extends State<HomePage> {
                         toggleFavorite(productId);
                       }
                     },
-                    child: SizedBox(
-                      width: 34,
-                      height: 34,
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: isFavorite
@@ -404,7 +399,6 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -485,10 +479,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             Material(
-              color: const Color(0xFFFFEEE9),
-              borderRadius: BorderRadius.circular(9),
               child: InkWell(
-                borderRadius: BorderRadius.circular(9),
                 onTap: () => addToCart(product),
                 child: const SizedBox(
                   width: 34,

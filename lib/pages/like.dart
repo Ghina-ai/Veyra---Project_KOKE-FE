@@ -1,3 +1,4 @@
+import 'package:fe/pages/keranjang.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fe/services/api.dart';
@@ -57,6 +58,20 @@ class _FavoritePageState extends State<FavoritePage> {
     setState(() {
       favoritesFuture = fetchFavorites();
     });
+  }
+
+  // ADD TO CART
+  void addToCart(Map<String, dynamic> product) {
+    CartService.addProduct(product);
+
+    final name = product['nama']?.toString() ?? 'Produk';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$name berhasil ditambahkan ke keranjang!'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   // GET FAVORITES
@@ -192,21 +207,16 @@ class _FavoritePageState extends State<FavoritePage> {
                 top: 9,
                 right: 9,
                 child: Material(
-                  color: Colors.white,
                   shape: const CircleBorder(),
                   child: InkWell(
                     customBorder: const CircleBorder(),
                     onTap: productId == null
                         ? null
                         : () => removeFavorite(productId),
-                    child: const SizedBox(
-                      width: 34,
-                      height: 34,
                       child: Icon(Icons.favorite, color: Colors.red, size: 18),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -266,14 +276,35 @@ class _FavoritePageState extends State<FavoritePage> {
 
         const SizedBox(height: 5),
 
-        // PRICE
-        Text(
-          price,
-          style: textStyle.copyWith(
-            fontSize: 13,
-            color: black,
-            fontWeight: FontWeight.bold,
-          ),
+        // PRICE + CART
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                price,
+                style: textStyle.copyWith(
+                  fontSize: 13,
+                  color: black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Material(
+              child: InkWell(
+                onTap: () => addToCart(product),
+                child: const SizedBox(
+                  width: 34,
+                  height: 34,
+                  child: Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Color(0xFFE98568),
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
